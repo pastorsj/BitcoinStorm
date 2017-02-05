@@ -1,5 +1,9 @@
 package edu.rosehulman.pastorsj;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,10 +18,14 @@ import org.json.JSONObject;
 @SuppressWarnings("serial")
 public class BitcoinAnalysisBolt implements IRichBolt {
 	OutputCollector _collector;
-	Map<String, Integer> priceMap;
+	Map<String, Double> priceMap;
+	Map<String, Double> priceDifferentialMap;
+	Map<String, String> priceDifferentialOutput;
+	FileOutputStream fos;
+	String outputFile;
 
-	public BitcoinAnalysisBolt() {
-		// TODO Auto-generated constructor stub
+	public BitcoinAnalysisBolt(String outputFile) {
+		this.outputFile = outputFile;
 	}
 
 	@Override
@@ -35,50 +43,107 @@ public class BitcoinAnalysisBolt implements IRichBolt {
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
 		// TODO Auto-generated method stub
 		this._collector = collector;
-		this.priceMap = new HashMap<String, Integer>();
-		this.priceMap.put("USDBuy", 0);
-		this.priceMap.put("GBPBuy", 0);
-		this.priceMap.put("JPYBuy", 0);
-		this.priceMap.put("RUBBuy", 0);
-		this.priceMap.put("KRWBuy", 0);
-		this.priceMap.put("USDSell", Integer.MAX_VALUE);
-		this.priceMap.put("GBPSell", Integer.MAX_VALUE);
-		this.priceMap.put("JPYSell", Integer.MAX_VALUE);
-		this.priceMap.put("RUBSell", Integer.MAX_VALUE);
-		this.priceMap.put("KRWSell", Integer.MAX_VALUE);
+		this.priceMap = new HashMap<String, Double>();
+		this.priceDifferentialMap = new HashMap<String, Double>();
+		this.priceDifferentialOutput = new HashMap<String, String>();
+		
+		this.priceMap.put("USDBuy", 0.0);
+		this.priceMap.put("GBPBuy", 0.0);
+		this.priceMap.put("JPYBuy", 0.0);
+		this.priceMap.put("RUBBuy", 0.0);
+		this.priceMap.put("KRWBuy", 0.0);
+		
+		this.priceMap.put("USDSell", Double.MAX_VALUE);
+		this.priceMap.put("GBPSell", Double.MAX_VALUE);
+		this.priceMap.put("JPYSell", Double.MAX_VALUE);
+		this.priceMap.put("RUBSell", Double.MAX_VALUE);
+		this.priceMap.put("KRWSell", Double.MAX_VALUE);
+		
+		this.priceDifferentialMap.put("USDDiff", 0.0);
+		this.priceDifferentialMap.put("GBPDiff", 0.0);
+		this.priceDifferentialMap.put("JPYDiff", 0.0);
+		this.priceDifferentialMap.put("RUBDiff", 0.0);
+		this.priceDifferentialMap.put("KRWDiff", 0.0);
+		
+		this.priceDifferentialOutput.put("USDDiff", "USD Price Differential");
+		this.priceDifferentialOutput.put("GBPDiff", "GBP Price Differential");
+		this.priceDifferentialOutput.put("JPYDiff", "JPY Price Differential");
+		this.priceDifferentialOutput.put("RUBDiff", "RUB Price Differential");
+		this.priceDifferentialOutput.put("KRWDiff", "KRW Price Differential");
+		
+		try {
+			File f = new File("./output.txt");
+			f.delete();
+			this.fos = new FileOutputStream(new File(this.outputFile), false);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	public void execute(Tuple input) {
 		JSONObject priceIndex = new JSONObject((String) input.getValueByField("prices"));
-		Integer USDBuy = priceIndex.getJSONObject("USD").getInt("buy");
-		Integer USDSell = priceIndex.getJSONObject("USD").getInt("sell");
-		Integer GBPBuy = priceIndex.getJSONObject("GBP").getInt("buy");
-		Integer GBPSell = priceIndex.getJSONObject("GBP").getInt("sell");
-		Integer JPYBuy = priceIndex.getJSONObject("JPY").getInt("buy");
-		Integer JPYSell = priceIndex.getJSONObject("JPY").getInt("sell");
-		Integer RUBBuy = priceIndex.getJSONObject("RUB").getInt("buy");
-		Integer RUBSell = priceIndex.getJSONObject("RUB").getInt("sell");
-		Integer KRWBuy = priceIndex.getJSONObject("KRW").getInt("buy");
-		Integer KRWSell = priceIndex.getJSONObject("KRW").getInt("sell");
+		
+		double USDBuy = priceIndex.getJSONObject("USD").getDouble("buy");
+		double USDSell = priceIndex.getJSONObject("USD").getDouble("sell");
+		double GBPBuy = priceIndex.getJSONObject("GBP").getDouble("buy");
+		double GBPSell = priceIndex.getJSONObject("GBP").getDouble("sell");
+		double JPYBuy = priceIndex.getJSONObject("JPY").getDouble("buy");
+		double JPYSell = priceIndex.getJSONObject("JPY").getDouble("sell");
+		double RUBBuy = priceIndex.getJSONObject("RUB").getDouble("buy");
+		double RUBSell = priceIndex.getJSONObject("RUB").getDouble("sell");
+		double KRWBuy = priceIndex.getJSONObject("KRW").getDouble("buy");
+		double KRWSell = priceIndex.getJSONObject("KRW").getDouble("sell");
+		
 		this.priceMap.put("USDBuy", Math.max(USDBuy, this.priceMap.get("USDBuy")));
 		this.priceMap.put("GBPBuy", Math.max(GBPBuy, this.priceMap.get("GBPBuy")));
 		this.priceMap.put("JPYBuy", Math.max(JPYBuy, this.priceMap.get("JPYBuy")));
 		this.priceMap.put("RUBBuy", Math.max(RUBBuy, this.priceMap.get("RUBBuy")));
 		this.priceMap.put("KRWBuy", Math.max(KRWBuy, this.priceMap.get("KRWBuy")));
+		
 		this.priceMap.put("USDSell", Math.min(USDSell, this.priceMap.get("USDSell")));
 		this.priceMap.put("GBPSell", Math.min(GBPSell, this.priceMap.get("GBPSell")));
 		this.priceMap.put("JPYSell", Math.min(JPYSell, this.priceMap.get("JPYSell")));
 		this.priceMap.put("RUBSell", Math.min(RUBSell, this.priceMap.get("RUBSell")));
 		this.priceMap.put("KRWSell", Math.min(KRWSell, this.priceMap.get("KRWSell")));
-		for (String key : this.priceMap.keySet()) {
-			System.out.println("Price: " + key + ": " + this.priceMap.get(key));
+		
+		this.priceDifferentialMap.put("USDDiff", this.priceMap.get("USDSell") - this.priceMap.get("USDBuy"));
+		this.priceDifferentialMap.put("GBPDiff", this.priceMap.get("GBPSell") - this.priceMap.get("GBPBuy"));
+		this.priceDifferentialMap.put("JPYDiff", this.priceMap.get("JPYSell") - this.priceMap.get("JPYBuy"));
+		this.priceDifferentialMap.put("RUBDiff", this.priceMap.get("RUBSell") - this.priceMap.get("RUBBuy"));
+		this.priceDifferentialMap.put("KRWDiff", this.priceMap.get("KRWSell") - this.priceMap.get("KRWBuy"));
+		
+		StringBuffer sb = new StringBuffer();
+		
+		for (String key : this.priceDifferentialMap.keySet()) {
+			String out = this.priceDifferentialOutput.get(key) + " = " + this.priceDifferentialMap.get(key) + "\n";
+			sb.append(out);
+		}
+		String breakLine = "\n-----------------------------------------\n";
+		sb.append(breakLine);
+		try {
+			this.fos.write(sb.toString().getBytes());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		try {
+			this.fos.write(breakLine.getBytes());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
 	@Override
 	public void cleanup() {
 		// TODO Auto-generated method stub
-
+		try {
+			this.fos.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

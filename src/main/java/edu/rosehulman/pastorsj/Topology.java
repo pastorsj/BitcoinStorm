@@ -4,11 +4,19 @@ package edu.rosehulman.pastorsj;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.utils.Utils;
 
 public class Topology {
 	
 	public static void main(String[] args) throws Exception {
 
+		if(args.length < 1) { 
+			System.err.println("Output location not provided");
+			return;
+		}
+		
+		String outputFile = args[0];
+		
 		Config config = new Config();
 		
 		config.setNumWorkers(20);
@@ -18,18 +26,14 @@ public class Topology {
 		builder.setSpout("bitcoin-spout",
 				new BitcoinSpout());
 
-		builder.setBolt("bitcoin-analysis-bolt", new BitcoinAnalysisBolt()).shuffleGrouping("bitcoin-spout");
+		builder.setBolt("bitcoin-analysis-bolt", new BitcoinAnalysisBolt(outputFile)).shuffleGrouping("bitcoin-spout");
 
 		final LocalCluster cluster = new LocalCluster();
 		cluster.submitTopology("BitcoinStorm", config, builder.createTopology());
-
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			@Override
-			public void run() {
-				cluster.killTopology("BitcoinStorm");
-				cluster.shutdown();
-			}
-		});
+		
+		Utils.sleep(20000);
+		cluster.killTopology("BitcoinStorm");
+		cluster.shutdown();
       
 //      StormSubmitter.submitTopology("BitcoinStorm", config, builder.createTopology());
 
