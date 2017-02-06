@@ -14,18 +14,18 @@ import org.apache.storm.topology.IRichBolt;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("serial")
 public class BitcoinAnalysisBolt implements IRichBolt {
+	private static final Logger LOG = LoggerFactory.getLogger(BitcoinAnalysisBolt.class);
 	OutputCollector _collector;
 	Map<String, Double> priceMap;
 	Map<String, Double> priceDifferentialMap;
 	Map<String, String> priceDifferentialOutput;
-	FileOutputStream fos;
-	String outputFile;
 
-	public BitcoinAnalysisBolt(String outputFile) {
-		this.outputFile = outputFile;
+	public BitcoinAnalysisBolt() {
 	}
 
 	@Override
@@ -70,15 +70,6 @@ public class BitcoinAnalysisBolt implements IRichBolt {
 		this.priceDifferentialOutput.put("JPYDiff", "JPY Price Differential");
 		this.priceDifferentialOutput.put("RUBDiff", "RUB Price Differential");
 		this.priceDifferentialOutput.put("KRWDiff", "KRW Price Differential");
-		
-		try {
-			File f = new File("./output.txt");
-			f.delete();
-			this.fos = new FileOutputStream(new File(this.outputFile), false);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	@Override
@@ -122,28 +113,12 @@ public class BitcoinAnalysisBolt implements IRichBolt {
 		}
 		String breakLine = "\n-----------------------------------------\n";
 		sb.append(breakLine);
-		try {
-			this.fos.write(sb.toString().getBytes());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
-			this.fos.write(breakLine.getBytes());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		System.out.println(sb.toString());
+		LOG.info(sb.toString());
+		LOG.info(breakLine);
 	}
 
 	@Override
 	public void cleanup() {
-		// TODO Auto-generated method stub
-		try {
-			this.fos.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 }
